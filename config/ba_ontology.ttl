@@ -1,0 +1,317 @@
+@prefix : <http://capsifi.com/doc2ba/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+# Base Classes
+:Category a rdfs:Class ;
+    rdfs:label "Category" ;
+    rdfs:comment "A high-level category of business architecture elements" .
+
+:BusinessArtefact a rdfs:Class ;
+    rdfs:label "Business Artefact" ;
+    rdfs:comment "A business architecture element or concept" .
+
+# Categories
+:DesiredResults a :Category ;
+    rdfs:label "Desired Results" ;
+    rdfs:comment "Desired results that the organization wants to achieve" ;
+    :hasExample "Our goal is to increase customer satisfaction by 20%",
+               "We aim to develop the capability to process claims within 24 hours",
+               "The outcome we seek is improved market position in APAC",
+               "Customer retention is measured by annual renewal rates" .
+
+:CourseOfAction a :Category ;
+    rdfs:label "Course of Action" ;
+    rdfs:comment "Courses of action that describe how to achieve results" ;
+    :hasExample "We will implement a digital-first strategy",
+               "The customer onboarding process includes five key steps",
+               "Our product-to-market value stream has been optimized",
+               "The IT transformation initiative has $3M in funding" .
+
+:Governance a :Category ;
+    rdfs:label "Governance" ;
+    rdfs:comment "Policies, principles, and controls that guide and constrain the organization" ;
+    :hasExample "All customer data must be encrypted at rest",
+               "The risk management policy requires quarterly assessments",
+               "Our design principle is to prioritize user experience",
+               "The system must support 10,000 concurrent users" .
+
+:Unknown a :Category ;
+    rdfs:label "Unknown" ;
+    rdfs:comment "Business architecture elements that don't clearly fit other categories" ;
+    :hasExample "The organization chart was updated last quarter",
+               "John Smith is responsible for APAC operations",
+               "The fiscal year ends in March" .
+
+# Business Artefacts
+
+# Desired Results artefacts
+:Capability a :BusinessArtefact ;
+    rdfs:subClassOf :DesiredResults ;
+    rdfs:label "Capability" ;
+    rdfs:comment "The ability of an organisation to successfully achieve a specific outcome through a coordinated combination of people, process, information and technology" .
+
+:Goal a :BusinessArtefact ;
+    rdfs:subClassOf :DesiredResults ;
+    rdfs:label "Goal" ;
+    rdfs:comment "A desired state or condition of the enterprise to be brought about or sustained through appropriate Courses of Action" .
+
+:Outcome a :BusinessArtefact ;
+    rdfs:subClassOf :DesiredResults ;
+    rdfs:label "Outcome" ;
+    rdfs:comment "The result, consequence, or effect of an action, decision, or event, often measured in terms of its impact on goals, objectives, or stakeholders" .
+
+:Measure a :BusinessArtefact ;
+    rdfs:subClassOf :DesiredResults ;
+    rdfs:label "Measure" ;
+    rdfs:comment "A quantifiable or observable attribute used to assess, evaluate, or compare the performance, quality, or effectiveness of a system, process, or outcome" .
+
+# Course of Action artefacts
+:Strategy a :BusinessArtefact ;
+    rdfs:subClassOf :CourseOfAction ;
+    rdfs:label "Strategy" ;
+    rdfs:comment "A plan, approach or course of action designed to achieve a specific goal or objective, often involving a set of coordinated actions or initiatives" .
+
+:ValueStream a :BusinessArtefact ;
+    rdfs:subClassOf :CourseOfAction ;
+    rdfs:label "ValueStream" ;
+    rdfs:comment "The sequence of activities, processes, and steps involved in delivering value to customers or stakeholders within an organization" .
+
+:Process a :BusinessArtefact ;
+    rdfs:subClassOf :CourseOfAction ;
+    rdfs:label "Process" ;
+    rdfs:comment "A series of interrelated tasks or activities performed to achieve a specific goal or objective within an organization or system" .
+
+:Initiative a :BusinessArtefact ;
+    rdfs:subClassOf :CourseOfAction ;
+    rdfs:label "Initiative" ;
+    rdfs:comment "A planned or organized effort to achieve a specific goal, objective, or outcome within a defined timeframe or scope" .
+
+# Governance artefacts
+:Principle a :BusinessArtefact ;
+    rdfs:subClassOf :Governance ;
+    rdfs:label "Principle" ;
+    rdfs:comment "A qualitative statement of intent that guides the decision-making process. Principles are fundamental norms, rules, or values that provide a foundation for decision-making, aligned with the organization's values and strategic goals" .
+
+:Policy a :BusinessArtefact ;
+    rdfs:subClassOf :Governance ;
+    rdfs:label "Policy" ;
+    rdfs:comment "A set of principles, guidelines, or rules established by an organization or authority to govern behavior, decisions, or actions within a specific context" .
+
+:Requirement a :BusinessArtefact ;
+    rdfs:subClassOf :Governance ;
+    rdfs:label "Requirement" ;
+    rdfs:comment "A specification or condition that must be satisfied or fulfilled by a product, system, or solution to meet the needs or expectations of stakeholders" .
+
+# Relationship Properties
+:realizes a rdf:Property ;
+    rdfs:label "realizes" ;
+    rdfs:domain :Capability ;
+    rdfs:range :ValueStream ;
+    rdfs:comment "Capabilities are realized by Value Streams that deliver the capability" .
+
+:enactedBy a rdf:Property ;
+    rdfs:label "enacted by" ;
+    rdfs:domain :Capability ;
+    rdfs:range :Process ;
+    rdfs:comment "Capabilities are enacted by Processes that support the capability" .
+
+:implements a rdf:Property ;
+    rdfs:label "implements" ;
+    rdfs:domain :Initiative ;
+    rdfs:range :Strategy ;
+    rdfs:comment "Initiatives implement Strategies that define the direction and approach" .
+
+:upliftedBy a rdf:Property ;
+    rdfs:label "uplifted by" ;
+    rdfs:domain :Capability ;
+    rdfs:range :Initiative ;
+    rdfs:comment "Capabilities are uplifted by Initiatives that enhance the maturity of the capability" .
+
+:measuredBy a rdf:Property ;
+    rdfs:label "measuredBy" ;
+    rdfs:domain :Goal ;
+    rdfs:range :Measure ;
+    rdfs:comment "Goals are measured by Measures that quantify success" .
+
+:sustainedBy a rdf:Property ;
+    rdfs:label "sustained by" ;
+    rdfs:domain :Goal ;
+    rdfs:range :Strategy ;
+    rdfs:comment "Goals are sustained by Strategies that direct efforts" .
+
+:directs a rdf:Property ;
+    rdfs:label "directs" ;
+    rdfs:domain :Strategy ;
+    rdfs:range :ValueStream ;
+    rdfs:comment "Strategies direct ValueStreams to achieve goals" .
+
+:contains a rdf:Property ;
+    rdfs:label "contains" ;
+    rdfs:domain :ValueStream ;
+    rdfs:range :Process ;
+    rdfs:comment "ValueStreams contain Processes that perform the value delivery" .
+
+:defines a rdf:Property ;
+    rdfs:label "defines" ;
+    rdfs:domain :Policy ;
+    rdfs:range :Requirement ;
+    rdfs:comment "Policies define Requirements for compliance" .
+
+:guides a rdf:Property ;
+    rdfs:label "guides" ;
+    rdfs:domain :Principle ;
+    rdfs:range :Requirement ;
+    rdfs:comment "Principles guide Requirements for alignment" .
+
+:assessedBy a rdf:Property ;
+    rdfs:label "assessedBy" ;
+    rdfs:domain :Outcome ;
+    rdfs:range :Measure ;
+    rdfs:comment "Outcomes are assessed by Measures that indicate success" .
+
+# Classification Rules
+:ClassificationRule a rdfs:Class ;
+    rdfs:label "ClassificationRule" ;
+    rdfs:comment "A rule for classifying business architecture artefacts" .
+
+# Capability Rules
+:CapabilityRule1 a :ClassificationRule ;
+    rdfs:label "Capability Rule 1" ;
+    :condition "describes what the organization can do rather than how it does it" ;
+    :conclusion "it is a Capability" ;
+    :appliesTo :Capability ;
+    :hasExample "Our ability to process claims quickly", "Customer data management capability", "The organization's capability to innovate in emerging markets" ;
+    :hasCounterExample "We will process claims within 24 hours", "Our strategy is to expand into emerging markets" .
+
+:CapabilityRule2 a :ClassificationRule ;
+    rdfs:label "Capability Rule 2" ;
+    :condition "describes a stable, reusable business function that delivers value" ;
+    :conclusion "it is a Capability" ;
+    :appliesTo :Capability ;
+    :hasExample "Product development capability", "Customer relationship management", "Risk assessment capability" ;
+    :hasCounterExample "Develop three new products this quarter", "The five-step onboarding process" .
+
+# Goal Rules
+:GoalRule1 a :ClassificationRule ;
+    rdfs:label "Goal Rule 1" ;
+    :condition "describes a specific, measurable target state to be achieved" ;
+    :conclusion "it is a Goal" ;
+    :appliesTo :Goal ;
+    :hasExample "Increase customer satisfaction to 95% by Q4", "Reduce operational costs by 15% within 12 months", "Enter three new market segments by 2026" ;
+    :hasCounterExample "Customer satisfaction is important to us", "Our process for reducing operational costs" .
+
+:GoalRule2 a :ClassificationRule ;
+    rdfs:label "Goal Rule 2" ;
+    :condition "uses action verbs with clear success criteria and timeframes" ;
+    :conclusion "it is a Goal" ;
+    :appliesTo :Goal ;
+    :hasExample "Achieve 20% revenue growth within the next fiscal year", "Reduce customer churn to less than 5% by Q3", "Deploy the new platform in all regions by June 2026" ;
+    :hasCounterExample "Revenue growth is measured by quarterly increases", "Our approach to reducing customer churn" .
+
+# Strategy Rules
+:StrategyRule1 a :ClassificationRule ;
+    rdfs:label "Strategy Rule 1" ;
+    :condition "describes a high-level approach or method for achieving goals" ;
+    :conclusion "it is a Strategy" ;
+    :appliesTo :Strategy ;
+    :hasExample "Differentiate through superior customer experience", "Pursue a cost leadership approach in mature markets", "Leverage partnerships to access new technologies" ;
+    :hasCounterExample "Improve customer experience scores by 10%", "Our customer experience management capability" .
+
+:StrategyRule2 a :ClassificationRule ;
+    rdfs:label "Strategy Rule 2" ;
+    :condition "articulates direction and approach without specific metrics" ;
+    :conclusion "it is a Strategy" ;
+    :appliesTo :Strategy ;
+    :hasExample "Pivot to a digital-first business model", "Focus on emerging markets while maintaining core business", "Invest in proprietary technology development" ;
+    :hasCounterExample "Launch three digital products this year", "Our project to implement the digital platform" .
+
+# ValueStream Rules
+:ValueStreamRule1 a :ClassificationRule ;
+    rdfs:label "ValueStream Rule 1" ;
+    :condition "describes an end-to-end flow of activities that delivers value to customers or stakeholders" ;
+    :conclusion "it is a ValueStream" ;
+    :appliesTo :ValueStream ;
+    :hasExample "Customer acquisition to onboarding value stream", "Product concept to market value stream", "Claim submission to settlement value stream" ;
+    :hasCounterExample "Our five-step customer onboarding process", "Increase customer acquisition by 15%" .
+
+# Process Rules
+:ProcessRule1 a :ClassificationRule ;
+    rdfs:label "Process Rule 1" ;
+    :condition "describes a sequence of activities with defined inputs and outputs" ;
+    :conclusion "it is a Process" ;
+    :appliesTo :Process ;
+    :hasExample "The customer onboarding process includes five key steps", "Our claims handling process from submission to payment", "The product approval process requires three review stages" ;
+    :hasCounterExample "Our ability to handle claims efficiently", "Improve the claims handling time by 20%" .
+
+:ProcessRule2 a :ClassificationRule ;
+    rdfs:label "Process Rule 2" ;
+    :condition "focuses on how work is performed through specific steps" ;
+    :conclusion "it is a Process" ;
+    :appliesTo :Process ;
+    :hasExample "The procurement process begins with requirement identification", "Data validation process includes three verification steps", "Employee onboarding follows a 10-step workflow" ;
+    :hasCounterExample "Our procurement capability", "Optimize the procurement approach" .
+
+# Principle Rules
+:PrincipleRule1 a :ClassificationRule ;
+    rdfs:label "Principle Rule 1" ;
+    :condition "states an enduring, fundamental belief that guides decisions" ;
+    :conclusion "it is a Principle" ;
+    :appliesTo :Principle ;
+    :hasExample "We design all products with customer needs first", "Data privacy is foundational to our operations", "Sustainability guides all our business decisions" ;
+    :hasCounterExample "All customer data must be encrypted", "Improve product design satisfaction by 15%" .
+
+# Policy Rules
+:PolicyRule1 a :ClassificationRule ;
+    rdfs:label "Policy Rule 1" ;
+    :condition "defines specific rules that must be followed" ;
+    :conclusion "it is a Policy" ;
+    :appliesTo :Policy ;
+    :hasExample "All customer data must be encrypted at rest", "Password reset is required every 90 days", "All financial transactions require dual approval" ;
+    :hasCounterExample "We value customer data security", "Our approach to data security" .
+
+# Requirement Rules
+:RequirementRule1 a :ClassificationRule ;
+    rdfs:label "Requirement Rule 1" ;
+    :condition "specifies a needed behavior, function, or quality in system or process design" ;
+    :conclusion "it is a Requirement" ;
+    :appliesTo :Requirement ;
+    :hasExample "The system must support processing of 1000 transactions per minute", "Customer authentication requires two-factor verification", "Reports must be available within 5 seconds of request" ;
+    :hasCounterExample "All systems must enforce two-factor authentication", "Implement two-factor authentication by Q3" .
+
+# Outcome Rules
+:OutcomeRule1 a :ClassificationRule ;
+    rdfs:label "Outcome Rule 1" ;
+    :condition "describes a state or result that occurs following an activity or change" ;
+    :conclusion "it is an Outcome" ;
+    :appliesTo :Outcome ;
+    :hasExample "Increased customer loyalty from improved service response", "Market share growth resulting from product innovation", "Reduced operational friction from process standardization" ;
+    :hasCounterExample "Improve service response times by 30%", "Customer loyalty is measured by repeat purchases" .
+
+# Measure Rules
+:MeasureRule1 a :ClassificationRule ;
+    rdfs:label "Measure Rule 1" ;
+    :condition "defines how success or performance is quantified and tracked" ;
+    :conclusion "it is a Measure" ;
+    :appliesTo :Measure ;
+    :hasExample "Customer satisfaction is measured through NPS scores", "Operational efficiency is tracked by cost per transaction", "Market penetration is calculated as percentage of addressable market" ;
+    :hasCounterExample "Increase NPS score to 60", "Our approach to improving customer satisfaction" .
+
+# Initiative Rules
+:InitiativeRule1 a :ClassificationRule ;
+    rdfs:label "Initiative Rule 1" ;
+    :condition "describes a time-bound effort with allocated resources and budget" ;
+    :conclusion "it is an Initiative" ;
+    :appliesTo :Initiative ;
+    :hasExample "The CRM implementation project will be completed by Q4", "Our digital transformation program has five workstreams", "The 12-month market expansion initiative has $2M funding" ;
+    :hasCounterExample "Our digital-first strategy", "Improve digital customer experience" .
+
+:InitiativeRule2 a :ClassificationRule ;
+    rdfs:label "Initiative Rule 2" ;
+    :condition "the endeavor in the statement can be delegated with budget allocations" ;
+    :conclusion "it is an Initiative" ;
+    :appliesTo :Initiative ;
+    :hasExample "The sustainability program has been allocated $500K", "Phase 1 of the IT modernization project with $1.2M budget", "The customer experience team has budget to implement the feedback system" ;
+    :hasCounterExample "Our sustainability principles guide all operations", "Improve customer experience metrics by 25%" .
