@@ -120,17 +120,33 @@ st.set_page_config(
     layout="wide",
 )
 
+# Streamlit sizes ordered lists to their content, which can make the longest
+# item wrap even when the surrounding Markdown container has ample room.
+st.markdown(
+    """
+    <style>
+    [data-testid="stMarkdownContainer"] ol {
+        width: 100%;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # App title and description
 st.title("doc2ba: Multi-Agent Business Architecture Miner")
 st.markdown(
     """
-    Extract business architecture components from documents using AI.
+    Analyze documents to discover business architecture artefacts, relationships,
+    and document-specific guidance.
     
     **Pipeline stages:**
-    1. **Extract** - Find relevant sentences from documents
-    2. **Categorize** - Group sentences into high-level categories
-    3. **Classify** - Identify specific business artefacts
-    4. **Infer** - Discover relationships between artefacts
+    1. **Profile** - Detect type & industry
+    2. **Generate rules** - Add contextual guidance
+    3. **Extract** - Find relevant evidence
+    4. **Categorize** - Group evidence by category
+    5. **Classify** - Identify business artefacts
+    6. **Infer** - Discover new artefacts & relationships
     """
 )
 
