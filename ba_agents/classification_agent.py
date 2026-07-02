@@ -6,8 +6,9 @@ from typing import Dict, List
 from langchain_core.prompts import ChatPromptTemplate
 
 from llm.factory import create_chat_llm
-from models.schemas import ClassificationResult
+from models.schemas import ClassificationResult, ContextualRuleGenerationResult
 from config.ba_config import CategoryType, CATEGORY_MAPPINGS, BusinessArtefactType, ARTEFACT_RULES
+from utils.rule_context import format_contextual_rules
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,13 @@ Sentences (id -> text):
 """.strip()
 
 class ClassificationAgent:
-    def __init__(self, provider: str | None = None, model: str | None = None, temperature: float = 0.0):
+    def __init__(
+        self,
+        provider: str | None = None,
+        model: str | None = None,
+        temperature: float = 0.0,
+        contextual_rules: ContextualRuleGenerationResult | None = None,
+    ):
         self.llm = create_chat_llm(provider=provider, model=model, temperature=temperature)
         # Use strict mode for better compatibility with GPT-5 and newer models
         self.structured = self.llm.with_structured_output(ClassificationResult, method="json_schema", strict=True)
@@ -50,13 +57,23 @@ class ClassificationAgent:
             
             # Generate the ripple down rules text for the allowed artefact types
             rules_text = self._generate_rules_text(mapping["allowed_types"])
+            generated_rules_text = format_contextual_rules(
+                contextual_rules, mapping["allowed_types"]
+            )
+            if generated_rules_text:
+                rules_text += (
+                    "\n\nTemporary contextual rules (supplementary; ontology "
+                    "definitions and expert rules remain authoritative):\n"
+                    + generated_rules_text
+                )
             
-            category_prompts[category] = SYSTEM_PROMPT_TEMPLATE.format(
+            category_prompt = SYSTEM_PROMPT_TEMPLATE.format(
                 category=category.value,
                 category_description=mapping["description"],
                 allowed_types=allowed_types_str,
                 rules_text=rules_text
             )
+            category_prompts[category] = category_prompt.replace("{", "{{").replace("}", "}}")
             
         self.category_prompts = category_prompts
         
@@ -145,4 +162,3 @@ class ClassificationAgent:
         
         # Return combined results
         return ClassificationResult(artefacts=all_artefacts)
-

@@ -183,6 +183,20 @@ class OntologyConfig:
         
         return rules
 
+    def get_artefact_definitions(self) -> Dict[Enum, str]:
+        """Return ontology definitions keyed by business artefact type."""
+        definitions = {}
+        for artefact in self.graph.subjects(RDF.type, BASE.BusinessArtefact):
+            artefact_name = str(artefact).replace(str(BASE), "")
+            try:
+                artefact_enum = getattr(self.BusinessArtefactType, artefact_name)
+            except AttributeError:
+                continue
+            definitions[artefact_enum] = str(
+                self.graph.value(artefact, RDFS.comment) or ""
+            )
+        return definitions
+
 
 # Create a global instance for easy import
 ontology_config = OntologyConfig()
@@ -193,6 +207,7 @@ BusinessArtefactType = ontology_config.BusinessArtefactType
 CATEGORY_MAPPINGS = ontology_config.get_category_mappings()
 INFERENCE_RULES = ontology_config.get_inference_rules()
 ARTEFACT_RULES = ontology_config.get_artefact_rules()
+ARTEFACT_DEFINITIONS = ontology_config.get_artefact_definitions()
 
 # Define RippleDownRule type for type checking
 class RippleDownRule(TypedDict):

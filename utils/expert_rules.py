@@ -1,5 +1,7 @@
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
+from models.schemas import ContextualRuleGenerationResult
+
 
 def _join_values(values: Iterable[Any]) -> str:
     return "; ".join(str(value) for value in values)
@@ -36,4 +38,20 @@ def format_inference_rules(
             "Description": str(description),
         }
         for source_type, target_type, relationship, description in rules
+    ]
+
+
+def format_contextual_rule_rows(
+    result: ContextualRuleGenerationResult | None,
+) -> List[Dict[str, Any]]:
+    if result is None:
+        return []
+    return [
+        {
+            "Artefact Type": rule_set.artefact_type.value,
+            "Rule": rule.number,
+            "Directive": rule.directive,
+        }
+        for rule_set in result.rule_sets
+        for rule in rule_set.rules
     ]

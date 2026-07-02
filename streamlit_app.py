@@ -15,6 +15,7 @@ from ba_agents.categorization_agent import CategorizationAgent
 from ba_agents.classification_agent import ClassificationAgent
 from ba_agents.extraction_agent import ExtractionAgent
 from ba_agents.inference_agent import InferenceAgent
+from ba_agents.rule_generation_agent import RuleGenerationAgent
 from models.schemas import (
     BusinessArtefact,
     CategorizationResult,
@@ -31,6 +32,7 @@ from config.ba_config import (
 )
 from utils.expert_rules import (
     format_classification_rules,
+    format_contextual_rule_rows,
     format_inference_rules,
 )
 
@@ -160,6 +162,8 @@ if "classification_result" not in st.session_state:
     st.session_state.classification_result = None
 if "inference_result" not in st.session_state:
     st.session_state.inference_result = None
+if "rule_generation_result" not in st.session_state:
+    st.session_state.rule_generation_result = None
 
 # File uploader
 uploaded_files = st.file_uploader(
@@ -173,6 +177,9 @@ def process_uploaded_files():
     if not uploaded_files:
         st.warning("Please upload at least one document file.")
         return
+
+    # Contextual guidance belongs only to this analysis run.
+    st.session_state.rule_generation_result = None
     
     # Save uploaded files to temp directory
     temp_dir = tempfile.mkdtemp()
@@ -191,10 +198,20 @@ def process_uploaded_files():
             st.error("No supported files could be processed.")
             return
         st.success(f"Loaded {len(chunks)} document chunks")
+
+    # Infer temporary document-specific guidance. The agent returns None on
+    # failure, preserving the existing ontology-only pipeline.
+    with st.spinner("Profiling document and generating contextual rules..."):
+        rule_generator = RuleGenerationAgent(provider=provider, model=model)
+        st.session_state.rule_generation_result = rule_generator.run(chunks)
     
     # Run extraction step
     with st.spinner("Extracting relevant sentences..."):
-        extractor = ExtractionAgent(provider=provider, model=model)
+        extractor = ExtractionAgent(
+            provider=provider,
+            model=model,
+            contextual_rules=st.session_state.rule_generation_result,
+        )
         extraction_pairs = extractor.run(chunks)
         
         sentences = []
@@ -244,7 +261,11 @@ def process_uploaded_files():
                 } for s in st.session_state.categorization_result.sentences
             }
             
-            classifier = ClassificationAgent(provider=provider, model=model)
+            classifier = ClassificationAgent(
+                provider=provider,
+                model=model,
+                contextual_rules=st.session_state.rule_generation_result,
+            )
             st.session_state.classification_result = classifier.run(categorized_details)
     else:
         st.session_state.classification_result = ClassificationResult(artefacts=[])
@@ -277,17 +298,70 @@ if st.session_state.extraction_result:
     st.header("Analysis Results")
     
     # Create tabs for each pipeline step
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    (
+        tab_profile,
+        tab_extraction,
+        tab_categorization,
+        tab_classification,
+        tab_inference,
+        tab_graph,
+        tab_expert_rules,
+        tab_contextual_rules,
+    ) = st.tabs([
+        "Document Profile",
         f"Extraction ({len(st.session_state.extraction_result.sentences)})", 
         f"Categorization ({len(st.session_state.categorization_result.sentences)})",
         f"Classification ({len(st.session_state.classification_result.artefacts)})",
         "Inference",
         "Relationship Graph",
         "Expert Rules",
+        "Contextual Rules",
     ])
+
+    # Tab 1: Document Profile
+    with tab_profile:
+        contextual_result = st.session_state.rule_generation_result
+        if contextual_result:
+            profile = contextual_result.profile
+            type_col, industry_col = st.columns(2)
+            with type_col:
+                with st.container(border=True):
+                    st.caption("Document Type")
+                    st.subheader(profile.document_type)
+                    st.caption(
+                        f"Inference confidence: {profile.document_type_confidence:.0%}"
+                    )
+            with industry_col:
+                with st.container(border=True):
+                    st.caption("Industry")
+                    st.subheader(profile.industry)
+                    st.caption(
+                        f"Inference confidence: {profile.industry_confidence:.0%}"
+                    )
+
+            st.subheader("Purpose")
+            st.write(profile.purpose)
+
+            st.subheader("Intended Audience")
+            if profile.audience:
+                st.write(" · ".join(profile.audience))
+            else:
+                st.caption("No intended audience was identified.")
+
+            st.subheader("Content Patterns")
+            if profile.content_patterns:
+                st.markdown(
+                    "\n".join(f"- {pattern}" for pattern in profile.content_patterns)
+                )
+            else:
+                st.caption("No dominant content patterns were identified.")
+        else:
+            st.info(
+                "A document profile was unavailable; analysis used ontology expert rules only."
+            )
     
-    # Tab 1: Extraction Results
-    with tab1:
+    # Tab 2: Extraction Results
+    with tab_extraction:
         if st.session_state.extraction_result.sentences:
             st.subheader("Extracted Sentences")
             
@@ -305,8 +379,8 @@ if st.session_state.extraction_result:
         else:
             st.info("No sentences were extracted.")
     
-    # Tab 2: Categorization Results
-    with tab2:
+    # Tab 3: Categorization Results
+    with tab_categorization:
         if st.session_state.categorization_result.sentences:
             st.subheader("Categorized Sentences")
             
@@ -343,8 +417,8 @@ if st.session_state.extraction_result:
         else:
             st.info("No sentences were categorized.")
     
-    # Tab 3: Classification Results
-    with tab3:
+    # Tab 4: Classification Results
+    with tab_classification:
         if st.session_state.classification_result.artefacts:
             st.subheader("Classified Artefacts")
             
@@ -378,8 +452,8 @@ if st.session_state.extraction_result:
         else:
             st.info("No artefacts were classified.")
     
-    # Tab 4: Inference Results
-    with tab4:
+    # Tab 5: Inference Results
+    with tab_inference:
         if st.session_state.inference_result.relationships or st.session_state.inference_result.new_artefacts:
             # Show new artefacts if any
             if st.session_state.inference_result.new_artefacts:
@@ -431,8 +505,8 @@ if st.session_state.extraction_result:
         else:
             st.info("No relationships or new artefacts were inferred.")
     
-    # Tab 5: Relationship Graph
-    with tab5:
+    # Tab 6: Relationship Graph
+    with tab_graph:
         if (st.session_state.classification_result.artefacts or 
             (st.session_state.inference_result and st.session_state.inference_result.relationships)):
             st.subheader("Business Architecture Relationship Graph")
@@ -461,8 +535,8 @@ if st.session_state.extraction_result:
         else:
             st.info("No artifacts or relationships available for visualization.")
 
-    # Tab 6: Expert Rules
-    with tab6:
+    # Tab 7: Expert Rules
+    with tab_expert_rules:
         st.subheader("Classification Rules")
         st.caption(
             "Rules used to distinguish each business architecture artefact type."
@@ -482,6 +556,23 @@ if st.session_state.extraction_result:
             st.dataframe(inference_rule_rows, use_container_width=True)
         else:
             st.info("No relationship rules are available in the ontology.")
+
+    # Tab 8: Contextual Rules
+    with tab_contextual_rules:
+        st.caption(
+            "Temporary document-type and industry guidance generated for this analysis run. "
+            "Ontology expert rules remain authoritative."
+        )
+        contextual_result = st.session_state.rule_generation_result
+        contextual_rows = format_contextual_rule_rows(contextual_result)
+        if contextual_rows:
+            st.dataframe(contextual_rows, use_container_width=True)
+        elif contextual_result:
+            st.info("No contextual rules were needed for this document.")
+        else:
+            st.info(
+                "Contextual rules were unavailable; analysis used ontology expert rules only."
+            )
     
     # Add export option
     if (st.session_state.extraction_result.sentences or 
@@ -497,6 +588,14 @@ if st.session_state.extraction_result:
             "classification": json.loads(st.session_state.classification_result.json()),
             "inference": json.loads(st.session_state.inference_result.json()),
         }
+        if st.session_state.rule_generation_result:
+            contextual_result = st.session_state.rule_generation_result
+            export_data["document_profile"] = json.loads(
+                contextual_result.profile.model_dump_json()
+            )
+            export_data["contextual_rules"] = json.loads(
+                contextual_result.model_dump_json()
+            )["rule_sets"]
         
         col1, col2 = st.columns(2)
         

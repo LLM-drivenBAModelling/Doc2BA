@@ -6,8 +6,10 @@ from typing import Iterable, List, Tuple
 from langchain_core.prompts import ChatPromptTemplate
 
 from llm.factory import create_chat_llm
-from models.schemas import ExtractionCandidates
+from config.ba_config import ARTEFACT_DEFINITIONS, ARTEFACT_RULES
+from models.schemas import ContextualRuleGenerationResult, ExtractionCandidates
 from utils.loaders import DocumentChunk
+from utils.rule_context import format_contextual_rules, format_ontology_context
 
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,9 @@ high-confidence sentences only, avoiding boilerplate, headers, and citations.
 Return at most 10 sentences per input page. If the text appears garbled or contains
 encoding issues, return an empty list of sentences rather than describing the issue.
 Only return actual Business Architecture content, not observations about the text quality.
+
+Ontology definitions and expert rules are authoritative. Temporary contextual
+rules supplement them and must never replace or override them.
 """.strip()
 
 
@@ -34,12 +39,33 @@ Page content:
 
 
 class ExtractionAgent:
-    def __init__(self, provider: str | None = None, model: str | None = None, temperature: float = 0.0):
+    def __init__(
+        self,
+        provider: str | None = None,
+        model: str | None = None,
+        temperature: float = 0.0,
+        contextual_rules: ContextualRuleGenerationResult | None = None,
+    ):
         self.llm = create_chat_llm(provider=provider, model=model, temperature=temperature)
         # Use strict mode for better compatibility with GPT-5 and newer models
         self.structured = self.llm.with_structured_output(ExtractionCandidates, method="json_schema", strict=True)
+        relevant_types = None
+        if contextual_rules is not None:
+            relevant_types = [
+                item.artefact_type
+                for item in contextual_rules.profile.artefact_relevance
+                if item.relevance != "irrelevant"
+            ]
+        expert_guidance = format_ontology_context(
+            ARTEFACT_DEFINITIONS, ARTEFACT_RULES, relevant_types
+        )
+        contextual_guidance = format_contextual_rules(contextual_rules, relevant_types)
+        guidance = "Authoritative ontology guidance:\n" + expert_guidance
+        if contextual_guidance:
+            guidance += "\n\nTemporary Contextual Rules:\n" + contextual_guidance
+        safe_system_prompt = (SYSTEM_PROMPT + "\n\n" + guidance).replace("{", "{{").replace("}", "}}")
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", SYSTEM_PROMPT),
+            ("system", safe_system_prompt),
             ("human", HUMAN_PROMPT),
         ])
 
@@ -109,4 +135,3 @@ class ExtractionAgent:
                 logger.warning(f"No sentences extracted from {chunk.source}:{chunk.page}")
                 
         return results
-
