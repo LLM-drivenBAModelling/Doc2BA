@@ -24,7 +24,15 @@ from models.schemas import (
 )
 from utils.loaders import DocumentChunk, load_inputs
 from utils.graph_visualization import generate_relationship_graph
-from config.ba_config import BusinessArtefactType
+from config.ba_config import (
+    ARTEFACT_RULES,
+    INFERENCE_RULES,
+    BusinessArtefactType,
+)
+from utils.expert_rules import (
+    format_classification_rules,
+    format_inference_rules,
+)
 
 # Load environment variables
 load_dotenv()
@@ -269,12 +277,13 @@ if st.session_state.extraction_result:
     st.header("Analysis Results")
     
     # Create tabs for each pipeline step
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         f"Extraction ({len(st.session_state.extraction_result.sentences)})", 
         f"Categorization ({len(st.session_state.categorization_result.sentences)})",
         f"Classification ({len(st.session_state.classification_result.artefacts)})",
         "Inference",
-        "Relationship Graph"
+        "Relationship Graph",
+        "Expert Rules",
     ])
     
     # Tab 1: Extraction Results
@@ -451,6 +460,28 @@ if st.session_state.extraction_result:
             
         else:
             st.info("No artifacts or relationships available for visualization.")
+
+    # Tab 6: Expert Rules
+    with tab6:
+        st.subheader("Classification Rules")
+        st.caption(
+            "Rules used to distinguish each business architecture artefact type."
+        )
+        classification_rule_rows = format_classification_rules(ARTEFACT_RULES)
+        if classification_rule_rows:
+            st.dataframe(classification_rule_rows, use_container_width=True)
+        else:
+            st.info("No classification rules are available in the ontology.")
+
+        st.subheader("Relationship Rules")
+        st.caption(
+            "Rules describing which artefact types can be related during inference."
+        )
+        inference_rule_rows = format_inference_rules(INFERENCE_RULES)
+        if inference_rule_rows:
+            st.dataframe(inference_rule_rows, use_container_width=True)
+        else:
+            st.info("No relationship rules are available in the ontology.")
     
     # Add export option
     if (st.session_state.extraction_result.sentences or 
