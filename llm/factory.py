@@ -1,8 +1,16 @@
 import os
+from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from langchain_anthropic import ChatAnthropic
+
+
+load_dotenv(
+    dotenv_path=Path(__file__).resolve().parent.parent / ".env",
+    override=False,
+)
 
 
 def create_chat_llm(
@@ -34,14 +42,22 @@ def create_chat_llm(
         return ChatAnthropic(model=chosen_model, temperature=temperature)
 
     if selected_provider == "azure":
-        deployment = model or os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        deployment = (
+            os.getenv("AZURE_OPENAI_DEPLOYMENT")
+            if not model or model.lower() == "default"
+            else model
+        )
         if not deployment:
             raise ValueError("AZURE provider requires --model or AZURE_OPENAI_DEPLOYMENT")
-        # Azure client picks up endpoint/key/version from env
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION") or os.getenv("OPENAI_API_VERSION")
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        if azure_endpoint:
+            azure_endpoint = azure_endpoint.rstrip("/").removesuffix("/openai/v1")
         return AzureChatOpenAI(
             azure_deployment=deployment,
+            api_version=api_version,
+            azure_endpoint=azure_endpoint,
             temperature=temperature,
         )
 
     raise ValueError(f"Unsupported provider: {selected_provider}")
-
