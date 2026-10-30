@@ -1,0 +1,8 @@
+id,name,type,confidence,description
+claims-processing,Claims Processing,Capability,1.0,"Ability to receive, assess, and settle insurance claims"
+grow-retention,Grow customer retention,Goal,0.9,Sustain higher renewal rates
+digital-first,Digital-first strategy,Strategy,0.85,Prefer digital channels for customer interactions
+customer-onboarding,Customer onboarding,Process,1.0,Steps to take a new customer live
+privacy-by-design,Privacy by design,Principle,1.0,Protect personal data throughout product design
+guidewire-claimcenter,Guidewire ClaimCenter,Application,1.0,Core claims handling system
+azure-platform,Azure cloud platform,Technology,1.0,Cloud hosting for core systems

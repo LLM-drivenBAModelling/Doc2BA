@@ -38,6 +38,14 @@
                "Our design principle is to prioritize user experience",
                "The system must support 10,000 concurrent users" .
 
+:Enablers a :Category ;
+    rdfs:label "Enablers" ;
+    rdfs:comment "Applications and technology that deliver and support the organization's capabilities" ;
+    :hasExample "Claims are handled in the Guidewire ClaimCenter application",
+               "Customer data is stored on the Azure cloud platform",
+               "The CRM application supports the sales team",
+               "Our integration layer is built on Kafka and API gateways" .
+
 :Unknown a :Category ;
     rdfs:label "Unknown" ;
     rdfs:comment "Business architecture elements that don't clearly fit other categories" ;
@@ -105,6 +113,17 @@
     rdfs:label "Requirement" ;
     rdfs:comment "A specification or condition that must be satisfied or fulfilled by a product, system, or solution to meet the needs or expectations of stakeholders" .
 
+# Enabler artefacts
+:Application a :BusinessArtefact ;
+    rdfs:subClassOf :Enablers ;
+    rdfs:label "Application" ;
+    rdfs:comment "A software system or solution that automates or enables business activities and delivers business capabilities to its users" .
+
+:Technology a :BusinessArtefact ;
+    rdfs:subClassOf :Enablers ;
+    rdfs:label "Technology" ;
+    rdfs:comment "A platform, infrastructure, tool or technical component that underpins and supports the organisation's applications and capabilities" .
+
 # Relationship Properties
 :realizes a rdf:Property ;
     rdfs:label "realizes" ;
@@ -171,6 +190,18 @@
     rdfs:domain :Outcome ;
     rdfs:range :Measure ;
     rdfs:comment "Outcomes are assessed by Measures that indicate success" .
+
+:deliveredBy a rdf:Property ;
+    rdfs:label "delivered by" ;
+    rdfs:domain :Capability ;
+    rdfs:range :Application ;
+    rdfs:comment "Capabilities are delivered by Applications that automate or enable the capability" .
+
+:supportedBy a rdf:Property ;
+    rdfs:label "supported by" ;
+    rdfs:domain :Capability ;
+    rdfs:range :Technology ;
+    rdfs:comment "Capabilities are supported by Technology that underpins the capability" .
 
 # Classification Rules
 :ClassificationRule a rdfs:Class ;
@@ -315,3 +346,21 @@
     :appliesTo :Initiative ;
     :hasExample "The sustainability program has been allocated $500K", "Phase 1 of the IT modernization project with $1.2M budget", "The customer experience team has budget to implement the feedback system" ;
     :hasCounterExample "Our sustainability principles guide all operations", "Improve customer experience metrics by 25%" .
+
+# Application Rules
+:ApplicationRule1 a :ClassificationRule ;
+    rdfs:label "Application Rule 1" ;
+    :condition "names a specific software system or solution that users interact with to perform business activities" ;
+    :conclusion "it is an Application" ;
+    :appliesTo :Application ;
+    :hasExample "Claims are handled in the Guidewire ClaimCenter application", "The CRM application supports the sales team", "Customers manage their policies through the self-service portal" ;
+    :hasCounterExample "Our ability to handle claims efficiently", "Customer data is stored on the Azure cloud platform" .
+
+# Technology Rules
+:TechnologyRule1 a :ClassificationRule ;
+    rdfs:label "Technology Rule 1" ;
+    :condition "describes a platform, infrastructure, tool or technical component that underpins applications rather than serving business users directly" ;
+    :conclusion "it is a Technology" ;
+    :appliesTo :Technology ;
+    :hasExample "Customer data is stored on the Azure cloud platform", "Our integration layer is built on Kafka and API gateways", "The organisation runs a hybrid cloud hosting environment" ;
+    :hasCounterExample "The CRM application supports the sales team", "Implement a new cloud migration programme by Q4" .

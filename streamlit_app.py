@@ -23,6 +23,11 @@ from models.schemas import (
     ExtractionResult,
     InferenceResult,
 )
+from utils.csv_artefacts import (
+    CsvArtefactError,
+    allowed_artefact_type_labels,
+    classification_from_csv,
+)
 from utils.loaders import DocumentChunk, load_inputs
 from utils.graph_visualization import generate_relationship_graph
 from config.ba_config import (
@@ -137,16 +142,8 @@ st.markdown(
 st.title("doc2ba: Multi-Agent Business Architecture Miner")
 st.markdown(
     """
-    Analyze documents to discover business architecture artefacts, relationships,
-    and document-specific guidance.
-    
-    **Pipeline stages:**
-    1. **Profile** - Detect type & industry
-    2. **Generate rules** - Add contextual guidance
-    3. **Extract** - Find relevant evidence
-    4. **Categorize** - Group evidence by category
-    5. **Classify** - Identify business artefacts
-    6. **Infer** - Discover new artefacts & relationships
+    Analyze documents to discover business architecture artefacts, or upload a
+    CSV of already structured BA objects and continue from classification.
     """
 )
 
@@ -180,13 +177,107 @@ if "inference_result" not in st.session_state:
     st.session_state.inference_result = None
 if "rule_generation_result" not in st.session_state:
     st.session_state.rule_generation_result = None
+if "input_mode" not in st.session_state:
+    st.session_state.input_mode = "documents"
 
-# File uploader
-uploaded_files = st.file_uploader(
-    "Upload document files (PDF, TXT, MD)",
-    type=["pdf", "txt", "md"],
-    accept_multiple_files=True,
+input_mode = st.radio(
+    "Input source",
+    options=["documents", "csv"],
+    format_func=lambda mode: {
+        "documents": "Documents (extract → classify → infer)",
+        "csv": "Structured BA CSV (skip extraction)",
+    }[mode],
+    horizontal=True,
+    help="CSV uploads are already structured BA objects, so extraction and classification are skipped.",
 )
+
+if input_mode == "documents":
+    st.markdown(
+        """
+        **Pipeline stages:**
+        1. **Profile** - Detect type & industry
+        2. **Generate rules** - Add contextual guidance
+        3. **Extract** - Find relevant evidence
+        4. **Categorize** - Group evidence by category
+        5. **Classify** - Identify business artefacts
+        6. **Infer** - Discover new artefacts & relationships
+        """
+    )
+    uploaded_files = st.file_uploader(
+        "Upload document files (PDF, TXT, MD)",
+        type=["pdf", "txt", "md"],
+        accept_multiple_files=True,
+    )
+    uploaded_csv = None
+else:
+    allowed_types = ", ".join(allowed_artefact_type_labels())
+    st.markdown(
+        f"""
+        **Pipeline stages:**
+        1. **Load CSV** - Map structured BA objects to classification data
+        2. **Infer** - Discover related artefacts & relationships from the ontology
+
+        Column names are case-insensitive. Required columns: `name`, `type`. Optional: `id`, `confidence`,
+        `source_sentence_ids`, `attributes` (JSON), plus any extra columns stored
+        as attributes. `type` must be one of: {allowed_types}.
+        """
+    )
+    uploaded_files = []
+    uploaded_csv = st.file_uploader(
+        "Upload a CSV of business architecture objects",
+        type=["csv"],
+        accept_multiple_files=False,
+    )
+
+def _empty_document_results():
+    st.session_state.extraction_result = ExtractionResult(sentences=[])
+    st.session_state.categorization_result = CategorizationResult(sentences=[])
+    st.session_state.rule_generation_result = None
+
+
+def process_csv_upload():
+    """Load structured BA objects and continue from classification/inference."""
+    if not uploaded_csv:
+        st.warning("Please upload a CSV of business architecture objects.")
+        return
+
+    st.session_state.input_mode = "csv"
+    _empty_document_results()
+
+    with st.spinner("Loading structured BA objects..."):
+        try:
+            csv_text = uploaded_csv.getvalue().decode("utf-8-sig")
+            st.session_state.classification_result = classification_from_csv(
+                csv_text,
+                filename=uploaded_csv.name,
+            )
+        except CsvArtefactError as exc:
+            st.session_state.classification_result = None
+            st.session_state.inference_result = None
+            st.error(f"Could not load CSV: {exc}")
+            return
+        except UnicodeDecodeError:
+            st.session_state.classification_result = None
+            st.session_state.inference_result = None
+            st.error("CSV must be UTF-8 encoded.")
+            return
+
+        st.success(
+            f"Loaded {len(st.session_state.classification_result.artefacts)} artefacts "
+            "into classification"
+        )
+
+    if st.session_state.classification_result.artefacts:
+        with st.spinner("Inferring relationships from the ontology..."):
+            inferencer = InferenceAgent(provider=provider, model=model)
+            st.session_state.inference_result = inferencer.run(
+                st.session_state.classification_result.artefacts
+            )
+    else:
+        st.session_state.inference_result = InferenceResult(
+            new_artefacts=[], relationships=[]
+        )
+
 
 def process_uploaded_files():
     """Process uploaded files and run the pipeline"""
@@ -194,6 +285,7 @@ def process_uploaded_files():
         st.warning("Please upload at least one document file.")
         return
 
+    st.session_state.input_mode = "documents"
     # Contextual guidance belongs only to this analysis run.
     st.session_state.rule_generation_result = None
     
@@ -306,14 +398,32 @@ def process_uploaded_files():
         pass
 
 # Run button
-if st.button("Run Analysis"):
-    process_uploaded_files()
+if input_mode == "csv":
+    if st.button("Run Inference from CSV"):
+        process_csv_upload()
+else:
+    if st.button("Run Analysis"):
+        process_uploaded_files()
 
 # Display results
-if st.session_state.extraction_result:
+if st.session_state.classification_result is not None:
     st.header("Analysis Results")
-    
-    # Create tabs for each pipeline step
+    csv_path = st.session_state.get("input_mode") == "csv"
+    extraction_count = len(
+        st.session_state.extraction_result.sentences
+        if st.session_state.extraction_result
+        else []
+    )
+    categorization_count = len(
+        st.session_state.categorization_result.sentences
+        if st.session_state.categorization_result
+        else []
+    )
+    classification_count = len(st.session_state.classification_result.artefacts)
+    inference = st.session_state.inference_result
+    inferred_artefact_count = len(inference.new_artefacts) if inference else 0
+    inferred_relationship_count = len(inference.relationships) if inference else 0
+
     (
         tab_profile,
         tab_extraction,
@@ -325,10 +435,10 @@ if st.session_state.extraction_result:
         tab_contextual_rules,
     ) = st.tabs([
         "Document Profile",
-        f"Extraction ({len(st.session_state.extraction_result.sentences)})", 
-        f"Categorization ({len(st.session_state.categorization_result.sentences)})",
-        f"Classification ({len(st.session_state.classification_result.artefacts)})",
-        "Inference",
+        f"Extraction ({extraction_count})",
+        f"Categorization ({categorization_count})",
+        f"Classification ({classification_count})",
+        f"Inference ({inferred_artefact_count} new, {inferred_relationship_count} rel)",
         "Relationship Graph",
         "Expert Rules",
         "Contextual Rules",
@@ -378,7 +488,7 @@ if st.session_state.extraction_result:
     
     # Tab 2: Extraction Results
     with tab_extraction:
-        if st.session_state.extraction_result.sentences:
+        if st.session_state.extraction_result and st.session_state.extraction_result.sentences:
             st.subheader("Extracted Sentences")
             
             # Create DataFrame for display
@@ -393,11 +503,15 @@ if st.session_state.extraction_result:
                 
             st.dataframe(extraction_data, use_container_width=True)
         else:
-            st.info("No sentences were extracted.")
+            st.info(
+                "Extraction was skipped because artefacts were loaded from a structured CSV."
+                if csv_path
+                else "No sentences were extracted."
+            )
     
     # Tab 3: Categorization Results
     with tab_categorization:
-        if st.session_state.categorization_result.sentences:
+        if st.session_state.categorization_result and st.session_state.categorization_result.sentences:
             st.subheader("Categorized Sentences")
             
             # Create DataFrame for display
@@ -431,10 +545,18 @@ if st.session_state.extraction_result:
             fig.update_layout(title_text="Category Distribution")
             st.plotly_chart(fig)
         else:
-            st.info("No sentences were categorized.")
+            st.info(
+                "Categorization was skipped because artefacts were loaded from a structured CSV."
+                if csv_path
+                else "No sentences were categorized."
+            )
     
     # Tab 4: Classification Results
     with tab_classification:
+        if csv_path:
+            st.caption(
+                "Artefacts loaded from the uploaded CSV. Extraction and LLM classification were skipped."
+            )
         if st.session_state.classification_result.artefacts:
             st.subheader("Classified Artefacts")
             
@@ -470,7 +592,10 @@ if st.session_state.extraction_result:
     
     # Tab 5: Inference Results
     with tab_inference:
-        if st.session_state.inference_result.relationships or st.session_state.inference_result.new_artefacts:
+        if st.session_state.inference_result and (
+            st.session_state.inference_result.relationships
+            or st.session_state.inference_result.new_artefacts
+        ):
             # Show new artefacts if any
             if st.session_state.inference_result.new_artefacts:
                 st.subheader("Inferred Artefacts")
@@ -591,18 +716,27 @@ if st.session_state.extraction_result:
             )
     
     # Add export option
-    if (st.session_state.extraction_result.sentences or 
-        st.session_state.categorization_result.sentences or 
-        st.session_state.classification_result.artefacts or 
-        st.session_state.inference_result.relationships):
+    if (
+        (st.session_state.extraction_result and st.session_state.extraction_result.sentences)
+        or (st.session_state.categorization_result and st.session_state.categorization_result.sentences)
+        or st.session_state.classification_result.artefacts
+        or (st.session_state.inference_result and st.session_state.inference_result.relationships)
+    ):
         
         st.header("Export Results")
         
         export_data = {
-            "extraction": json.loads(st.session_state.extraction_result.json()),
-            "categorization": json.loads(st.session_state.categorization_result.json()),
+            "source": "csv" if csv_path else "documents",
+            "extraction": json.loads(
+                (st.session_state.extraction_result or ExtractionResult()).json()
+            ),
+            "categorization": json.loads(
+                (st.session_state.categorization_result or CategorizationResult()).json()
+            ),
             "classification": json.loads(st.session_state.classification_result.json()),
-            "inference": json.loads(st.session_state.inference_result.json()),
+            "inference": json.loads(
+                (st.session_state.inference_result or InferenceResult()).json()
+            ),
         }
         if st.session_state.rule_generation_result:
             contextual_result = st.session_state.rule_generation_result

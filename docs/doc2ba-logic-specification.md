@@ -17,7 +17,7 @@ Given one or more documents, the system produces four progressively richer outpu
 1. **Extraction** — a list of individual sentences from the documents that are relevant
    to Business Architecture, each with a source, page number, and confidence score.
 2. **Categorization** — each extracted sentence assigned to one of a small set of
-   high-level categories (Desired Results, Course of Action, Governance, Unknown).
+   high-level categories (Desired Results, Course of Action, Governance, Enablers, Unknown).
 3. **Classification** — named, typed *artefacts* (Capability, Goal, Strategy, Process,
    Policy, …) distilled from the categorized sentences, each with a confidence and a
    list of the sentence IDs that support it.
@@ -117,6 +117,13 @@ Eleven instances of `BusinessArtefact`, each nested under exactly one category v
 - **Initiative** — a planned or organized effort to achieve a specific goal, objective, or
   outcome within a defined timeframe or scope.
 
+**Under Enablers:**
+
+- **Application** — a software system or solution that automates or enables business
+  activities and delivers business capabilities to its users.
+- **Technology** — a platform, infrastructure, tool or technical component that
+  underpins and supports the organisation's applications and capabilities.
+
 **Under Governance:**
 
 - **Principle** — a qualitative statement of intent that guides the decision-making
@@ -136,7 +143,8 @@ Derived mechanically by finding every artefact whose `subClassOf` points at the 
 | Desired Results | Capability, Goal, Outcome, Measure |
 | Course of Action | Strategy, ValueStream, Process, Initiative |
 | Governance | Principle, Policy, Requirement |
-| Unknown | **All eleven types** (special-cased override) |
+| Enablers | Application, Technology |
+| Unknown | **All thirteen types** (special-cased override) |
 
 The Unknown category is special-cased: rather than take its (empty) subclass set, the
 loader replaces its allowed types with the full list of artefact types.
@@ -160,6 +168,8 @@ types becomes an inference rule of the shape
 | `defines` | Policy → Requirement | Policies define Requirements for compliance |
 | `guides` | Principle → Requirement | Principles guide Requirements for alignment |
 | `assessedBy` | Outcome → Measure | Outcomes are assessed by Measures that indicate success |
+| `deliveredBy` | Capability → Application | Capabilities are delivered by Applications that automate or enable the capability |
+| `supportedBy` | Capability → Technology | Capabilities are supported by Technology that underpins the capability |
 
 Domain and range may each be a single class or a set of alternatives; the rule expansion
 is the Cartesian product of the resolved domains and ranges. Any domain or range that
@@ -776,7 +786,7 @@ Substitutions per category:
 - `category` — the category's label.
 - `category_description` — the category's description from the ontology.
 - `allowed_types` — the category's allowed artefact type labels, comma-separated. For the
-  Unknown category this is all eleven types.
+  Unknown category this is all thirteen types.
 - `rules_text` — see below.
 
 **Building `rules_text`:** for each allowed artefact type that has classification rules:
@@ -914,7 +924,7 @@ InferenceResult {
 }
 ```
 
-Relationship `type` is a free-form string, not constrained to the ontology's eleven
+Relationship `type` is a free-form string, not constrained to the ontology's thirteen
 relationship names — the ontology rules act as guidance, not as a closed vocabulary. Edges
 whose endpoints don't resolve to a known artefact are dropped at consumption time
 (see §10.1), not at generation time.

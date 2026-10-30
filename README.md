@@ -3,7 +3,7 @@
 This small research project demonstrates a simple, provider‑agnostic multi‑agent pipeline using LangChain to:
 
 1. Extract Business Architecture‑related sentences from unstructured documents (e.g., PDFs).
-2. Categorize extracted sentences into high-level categories (Desired Results, Course of Action, Governance) based on CAPSICUM business architecture ontology.
+2. Categorize extracted sentences into high-level categories (Desired Results, Course of Action, Governance, Enablers) based on CAPSICUM business architecture ontology.
 3. Classify categorized content into artefact types (e.g., Capability, Goal, Strategy).
 4. Infer related artefacts and relationships (e.g., Capability → ValueStream) based on a simplified subset of CAPSICUM ontology.
 
@@ -62,6 +62,20 @@ You can also save the output to a JSON file for further processing:
 python cli.py --input ./test_files --provider openai --model gpt-4o --output results.json
 ```
 
+If you already have structured business architecture objects, skip extraction and
+classification and continue from ontology inference:
+
+```bash
+python cli.py from-csv --input ./test_files/sample_ba_objects.csv --provider openai --model gpt-4o-mini
+python run.py from-csv --input ./test_files/sample_ba_objects.csv --provider openai --model gpt-4o-mini
+```
+
+CSV files must include `name` and `type` (column names are case-insensitive). Optional columns: `id`, `confidence`,
+`source_sentence_ids`, `attributes` (JSON object text). Extra columns are stored
+as artefact attributes. `type` must match an ontology artefact type (for example
+Capability, Goal, Strategy, Process, Application, Technology). A sample file is at
+`test_files/sample_ba_objects.csv`.
+
 #### Streamlit Web UI
 
 For a more interactive experience, you can directly launch the Streamlit web interface:
@@ -72,6 +86,7 @@ streamlit run streamlit_app.py
 
 This will launch a browser with a user-friendly interface where you can:
 - Upload document files (PDFs, TXT, MD) directly through the browser
+- Or upload a CSV of already structured BA objects (skips extraction/classification)
 - Select your preferred LLM provider and model
 - Run the complete pipeline with visual progress indicators
 - View interactive visualizations of the results
@@ -200,7 +215,7 @@ Each step in the pipeline has specific inputs and outputs:
 ### Notes
 
 - The LLM factory (`llm/factory.py`) centralizes vendor/model selection for OpenAI, Anthropic, and Azure.
-- The 4-stage pipeline (extract → categorize → classify → infer) improves accuracy through progressive specialization.
+- The 4-stage pipeline (extract → categorize → classify → infer) improves accuracy through progressive specialization. A structured CSV path loads artefacts directly into classification and continues with inference.
 - Agents use Pydantic‑typed structured outputs for reproducibility and type safety.
 - Keep prompts small and targeted to encourage consistent JSON.
 - The included test files provide examples for experimenting with the pipeline.
@@ -233,7 +248,7 @@ The business architecture configuration is defined using an RDF/OWL ontology sto
 - **Configuration File**: `config/ba_config.py` loads the ontology and provides a programmatic interface
 - **Ontology File**: `config/ba_ontology.ttl` contains the RDF triples defining the ontology
 - **Key Concepts**:
-  - **Categories**: High-level groupings (Desired Results, Course of Action, Governance)
+  - **Categories**: High-level groupings (Desired Results, Course of Action, Governance, Enablers)
   - **Business Artefacts**: Specific types like Capability, Goal, Strategy (as subclasses of categories)
   - **Relationships**: How different artefacts relate to each other
   - **Classification Rules**: Rules for identifying specific artefact types

@@ -22,6 +22,7 @@ from models.schemas import (
     ExtractionResult,
     InferenceResult,
 )
+from utils.csv_artefacts import CsvArtefactError, classification_from_csv
 from utils.loaders import DocumentChunk, load_inputs
 
 
@@ -204,6 +205,54 @@ def run(
             "categorization": json.loads(categorization_result.json()),
             "classification": json.loads(classification_result.json()),
             "inference": json.loads(inference_result.json()),
+        }
+        Path(output).write_text(json.dumps(data, indent=2), encoding="utf-8")
+        console.print(f"Saved JSON to {output}")
+
+
+@app.command("from-csv")
+def from_csv(
+    input: str = typer.Option(..., help="Path to a CSV of business architecture objects"),
+    provider: Optional[str] = typer.Option(None, help="LLM provider: openai|anthropic|azure"),
+    model: Optional[str] = typer.Option(None, help="Model or deployment name"),
+    output: Optional[str] = typer.Option(None, help="Optional JSON output path"),
+):
+    """Skip extraction: load structured BA objects and run ontology inference."""
+    load_dotenv()
+
+    console.rule("[bold]Loading structured BA objects")
+    csv_path = Path(input)
+    if not csv_path.exists():
+        console.print(f"[red]CSV not found: {csv_path}[/red]")
+        raise typer.Exit(code=1)
+
+    try:
+        classification_result = classification_from_csv(csv_path)
+    except CsvArtefactError as exc:
+        console.print(f"[red]Could not load CSV: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    extraction_result = ExtractionResult(sentences=[])
+    categorization_result = CategorizationResult(sentences=[])
+    _print_classification(classification_result)
+
+    console.rule("[bold]Inference")
+    if not classification_result.artefacts:
+        console.print("[yellow]No artefacts to infer from, skipping inference step[/yellow]")
+        inference_result = InferenceResult(new_artefacts=[], relationships=[])
+    else:
+        inferencer = InferenceAgent(provider=provider, model=model)
+        inference_result = inferencer.run(classification_result.artefacts)
+
+    _print_inference(inference_result)
+
+    if output:
+        data = {
+            "extraction": json.loads(extraction_result.json()),
+            "categorization": json.loads(categorization_result.json()),
+            "classification": json.loads(classification_result.json()),
+            "inference": json.loads(inference_result.json()),
+            "source": "csv",
         }
         Path(output).write_text(json.dumps(data, indent=2), encoding="utf-8")
         console.print(f"Saved JSON to {output}")

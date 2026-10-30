@@ -29,6 +29,30 @@ def cli(
         cmd.extend(["--output", output])
     subprocess.run(cmd)
 
+
+@app.command("from-csv")
+def from_csv(
+    input: str = typer.Option(..., help="Path to a CSV of business architecture objects"),
+    provider: str = typer.Option("openai", help="LLM provider: openai|anthropic|azure"),
+    model: str = typer.Option("gpt-4o-mini", help="Model or deployment name"),
+    output: str = typer.Option(None, help="Optional JSON output path"),
+):
+    """Load structured BA objects from CSV and run ontology inference"""
+    cmd = [
+        "python",
+        "cli.py",
+        "from-csv",
+        "--input",
+        input,
+        "--provider",
+        provider,
+        "--model",
+        model,
+    ]
+    if output:
+        cmd.extend(["--output", output])
+    subprocess.run(cmd)
+
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """Launch menu if no command is provided"""

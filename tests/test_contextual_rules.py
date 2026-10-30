@@ -251,7 +251,7 @@ class StreamlitIntegrationTests(unittest.TestCase):
             'f"Extraction',
             'f"Categorization',
             'f"Classification',
-            '"Inference"',
+            'f"Inference',
             '"Relationship Graph"',
             '"Expert Rules"',
             '"Contextual Rules"',
